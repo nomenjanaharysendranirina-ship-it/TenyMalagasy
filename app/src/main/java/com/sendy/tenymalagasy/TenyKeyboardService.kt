@@ -3,6 +3,8 @@ package com.sendy.tenymalagasy
 
 import android.inputmethodservice.InputMethodService
 import android.graphics.Color
+import android.graphics.Typeface
+import android.graphics.drawable.GradientDrawable
 import android.view.View
 import android.view.Gravity
 import android.widget.Button
@@ -15,8 +17,8 @@ class TenyKeyboardService : InputMethodService() {
     override fun onCreateInputView(): View {
         val root = LinearLayout(this)
         root.orientation = LinearLayout.VERTICAL
-        root.setPadding(4, 8, 4, 8)
-        root.setBackgroundColor(Color.LTGRAY)
+        root.setPadding(5, 8, 5, 8)
+        root.setBackgroundColor(Color.rgb(220, 225, 232))
 
         suggestionsRow = LinearLayout(this)
         suggestionsRow.orientation = LinearLayout.HORIZONTAL
@@ -38,7 +40,15 @@ class TenyKeyboardService : InputMethodService() {
             for (key in row) {
                 val button = Button(this)
                 button.text = if (key == "ESPACE") "Espace" else key
-                button.textSize = 14f
+                button.textSize = 16f
+                button.setTextColor(Color.BLACK)
+                button.setTypeface(null, Typeface.BOLD)
+                button.isAllCaps = false
+                button.background = GradientDrawable().apply {
+                    setColor(Color.WHITE)
+                    cornerRadius = 12f
+                    setStroke(1, Color.LTGRAY)
+                }
 
                 val params = LinearLayout.LayoutParams(
                     0, 52, if (key == "ESPACE") 3f else 1f
@@ -48,7 +58,6 @@ class TenyKeyboardService : InputMethodService() {
 
                 button.setOnClickListener {
                     val input = currentInputConnection
-
                     when (key) {
                         "⌫" -> input?.deleteSurroundingText(1, 0)
                         "↵" -> input?.commitText("\n", 1)
@@ -56,17 +65,14 @@ class TenyKeyboardService : InputMethodService() {
                         "?123" -> { }
                         else -> input?.commitText(key, 1)
                     }
-
                     updateSuggestions()
                 }
 
                 line.addView(button)
             }
-
             root.addView(line)
         }
 
-        updateSuggestions()
         return root
     }
 
@@ -83,17 +89,15 @@ class TenyKeyboardService : InputMethodService() {
 
         if (word.isEmpty()) return
 
-        val suggestions = MalagasyDictionary.suggest(word)
-
-        for (suggestion in suggestions) {
+        MalagasyDictionary.suggest(word).forEach { suggestion ->
             val button = Button(this)
             button.text = suggestion
-            button.textSize = 13f
+            button.setTextColor(Color.BLACK)
+            button.isAllCaps = false
 
             button.setOnClickListener {
-                val input = currentInputConnection
-                input?.deleteSurroundingText(word.length, 0)
-                input?.commitText("$suggestion ", 1)
+                currentInputConnection?.deleteSurroundingText(word.length, 0)
+                currentInputConnection?.commitText("$suggestion ", 1)
                 updateSuggestions()
             }
 
