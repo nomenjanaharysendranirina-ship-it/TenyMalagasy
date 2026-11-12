@@ -3,7 +3,6 @@ package com.sendy.tenymalagasy
 
 import android.inputmethodservice.InputMethodService
 import android.graphics.Color
-import android.graphics.Typeface
 import android.view.View
 import android.view.Gravity
 import android.widget.Button
@@ -11,12 +10,18 @@ import android.widget.LinearLayout
 
 class TenyKeyboardService : InputMethodService() {
 
-    override fun onCreateInputView(): View {
+    private lateinit var suggestionsRow: LinearLayout
 
-        val keyboard = LinearLayout(this)
-        keyboard.orientation = LinearLayout.VERTICAL
-        keyboard.setPadding(4, 8, 4, 8)
-        keyboard.setBackgroundColor(Color.LTGRAY)
+    override fun onCreateInputView(): View {
+        val root = LinearLayout(this)
+        root.orientation = LinearLayout.VERTICAL
+        root.setPadding(4, 8, 4, 8)
+        root.setBackgroundColor(Color.LTGRAY)
+
+        suggestionsRow = LinearLayout(this)
+        suggestionsRow.orientation = LinearLayout.HORIZONTAL
+        suggestionsRow.gravity = Gravity.CENTER
+        root.addView(suggestionsRow)
 
         val rows = listOf(
             listOf("q","w","e","r","t","y","u","i","o","p"),
@@ -34,15 +39,11 @@ class TenyKeyboardService : InputMethodService() {
                 val button = Button(this)
                 button.text = if (key == "ESPACE") "Espace" else key
                 button.textSize = 14f
-                button.setTypeface(null, Typeface.BOLD)
 
                 val params = LinearLayout.LayoutParams(
-                    0,
-                    52,
-                    if (key == "ESPACE") 3f else 1f
+                    0, 52, if (key == "ESPACE") 3f else 1f
                 )
                 params.setMargins(2, 3, 2, 3)
-
                 button.layoutParams = params
 
                 button.setOnClickListener {
@@ -55,14 +56,48 @@ class TenyKeyboardService : InputMethodService() {
                         "?123" -> { }
                         else -> input?.commitText(key, 1)
                     }
+
+                    updateSuggestions()
                 }
 
                 line.addView(button)
             }
 
-            keyboard.addView(line)
+            root.addView(line)
         }
 
-        return keyboard
+        updateSuggestions()
+        return root
+    }
+
+    private fun updateSuggestions() {
+        if (!::suggestionsRow.isInitialized) return
+
+        suggestionsRow.removeAllViews()
+
+        val before = currentInputConnection
+            ?.getTextBeforeCursor(100, 0)?.toString() ?: ""
+
+        val word = Regex("[\\p{L}']+$")
+            .find(before)?.value ?: ""
+
+        if (word.isEmpty()) return
+
+        val suggestions = MalagasyDictionary.suggest(word)
+
+        for (suggestion in suggestions) {
+            val button = Button(this)
+            button.text = suggestion
+            button.textSize = 13f
+
+            button.setOnClickListener {
+                val input = currentInputConnection
+                input?.deleteSurroundingText(word.length, 0)
+                input?.commitText("$suggestion ", 1)
+                updateSuggestions()
+            }
+
+            suggestionsRow.addView(button)
+        }
     }
 }
